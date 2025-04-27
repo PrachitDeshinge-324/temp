@@ -40,7 +40,7 @@ def main():
     if tracker_cfg['algorithm'] == 'bytetrack':
         tracker = ByteTrackTracker(iou_threshold=tracker_cfg['iou_threshold'], max_age=tracker_cfg['max_age'], min_confidence=tracker_cfg['min_confidence'])
     elif tracker_cfg['algorithm'] == 'botsort':
-        tracker = BoTSORTTracker(iou_threshold=tracker_cfg['iou_threshold'], max_age=tracker_cfg['max_age'], min_confidence=tracker_cfg['min_confidence'])
+        tracker = BoTSORTTracker(iou_threshold=tracker_cfg['iou_threshold'], max_age=tracker_cfg['max_age'], min_confidence=tracker_cfg['min_confidence'], device=device)
     else:
         print(f"Unknown tracker algorithm: {tracker_cfg['algorithm']}")
         sys.exit(1)

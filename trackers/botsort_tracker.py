@@ -1,6 +1,8 @@
 # BoT-SORT Tracker Stub
 import numpy as np
 from scipy.optimize import linear_sum_assignment
+from utils.reid import SimpleReID
+from scipy.spatial.distance import cdist
 
 def iou(bb_test, bb_gt):
     xx1 = np.maximum(bb_test[0], bb_gt[0])
@@ -14,20 +16,22 @@ def iou(bb_test, bb_gt):
     return o
 
 class Track:
-    def __init__(self, bbox, track_id, conf):
+    def __init__(self, bbox, track_id, conf, embedding):
         self.bbox = bbox
         self.track_id = track_id
         self.conf = conf
+        self.embedding = embedding
         self.age = 0
         self.time_since_update = 0
 
 class BoTSORTTracker:
-    def __init__(self, iou_threshold=0.3, max_age=30, min_confidence=0.3):
+    def __init__(self, iou_threshold=0.3, max_age=30, min_confidence=0.3, device='cpu'):
         self.iou_threshold = iou_threshold
         self.max_age = max_age
         self.min_confidence = min_confidence
         self.tracks = []
         self.next_id = 1
+        self.reid = SimpleReID(device=device)
 
     def update(self, detections, image: np.ndarray = None):
         """
@@ -41,21 +45,34 @@ class BoTSORTTracker:
         detections = [d for d in detections if d[4] >= self.min_confidence]
         dets = np.array([d[:4] for d in detections]) if detections else np.empty((0,4))
         det_confs = [d[4] for d in detections]
-        # Prepare track bboxes
+        # Extract embeddings for detections
+        det_embs = []
+        if image is not None and len(detections) > 0:
+            for det in detections:
+                det_embs.append(self.reid.extract(image, det[:4]))
+        else:
+            det_embs = [np.zeros(512) for _ in detections]
+        # Prepare track bboxes and embeddings
         track_bboxes = np.array([t.bbox for t in self.tracks]) if self.tracks else np.empty((0,4))
-        # Association (IoU-based, placeholder for future ReID)
+        track_embs = np.array([t.embedding for t in self.tracks]) if self.tracks else np.empty((0,512))
+        # Association: combine IoU and appearance
+        assigned_tracks = set()
+        assigned_dets = set()
         if len(track_bboxes) > 0 and len(dets) > 0:
             iou_matrix = np.zeros((len(track_bboxes), len(dets)), dtype=np.float32)
             for t, tb in enumerate(track_bboxes):
                 for d, db in enumerate(dets):
                     iou_matrix[t, d] = iou(tb, db)
-            row_ind, col_ind = linear_sum_assignment(-iou_matrix)
-            assigned_tracks = set()
-            assigned_dets = set()
+            # Appearance distance (cosine)
+            emb_matrix = cdist(track_embs, det_embs, metric='cosine') if len(track_embs) > 0 and len(det_embs) > 0 else np.zeros_like(iou_matrix)
+            # Combine: prefer appearance, fallback to IoU
+            cost_matrix = 0.5 * (1 - iou_matrix) + 0.5 * emb_matrix
+            row_ind, col_ind = linear_sum_assignment(cost_matrix)
             for t, d in zip(row_ind, col_ind):
-                if iou_matrix[t, d] >= self.iou_threshold:
+                if iou_matrix[t, d] >= self.iou_threshold or emb_matrix[t, d] < 0.4:
                     self.tracks[t].bbox = dets[d]
                     self.tracks[t].conf = det_confs[d]
+                    self.tracks[t].embedding = det_embs[d]
                     self.tracks[t].time_since_update = 0
                     assigned_tracks.add(t)
                     assigned_dets.add(d)
@@ -66,12 +83,12 @@ class BoTSORTTracker:
             # New tracks
             for d, det in enumerate(detections):
                 if d not in assigned_dets:
-                    self.tracks.append(Track(det[:4], self.next_id, det[4]))
+                    self.tracks.append(Track(det[:4], self.next_id, det[4], det_embs[d]))
                     self.next_id += 1
         else:
             # No tracks or no detections: all detections are new tracks
-            for det in detections:
-                self.tracks.append(Track(det[:4], self.next_id, det[4]))
+            for idx, det in enumerate(detections):
+                self.tracks.append(Track(det[:4], self.next_id, det[4], det_embs[idx]))
                 self.next_id += 1
             for track in self.tracks:
                 track.time_since_update += 1
