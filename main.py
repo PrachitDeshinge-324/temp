@@ -62,6 +62,15 @@ def main():
         print(f"Error: Unable to open video source {video_source}")
         sys.exit(1)
 
+    # VideoWriter setup if saving output
+    out_writer = None
+    if vis_cfg.get('save_output', False):
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        out_writer = cv2.VideoWriter(vis_cfg.get('output_path', 'output.mp4'), fourcc, fps, (width, height))
+
     frame_id = 0
     start_time = time.time()
     while True:
@@ -87,6 +96,9 @@ def main():
             for track in tracks:
                 x1, y1, x2, y2, track_id, conf = track
                 csv_writer.writerow([frame_id, int(track_id), int(x1), int(y1), int(x2), int(y2)])
+        # Write frame to output video if enabled
+        if out_writer:
+            out_writer.write(frame)
         # FPS calculation
         elapsed = time.time() - start_time
         fps = (frame_id + 1) / elapsed if elapsed > 0 else 0
@@ -101,6 +113,9 @@ def main():
 
     if save_tracks and csv_file:
         csv_file.close()
+
+    if out_writer:
+        out_writer.release()
 
     cap.release()
     cv2.destroyAllWindows()
