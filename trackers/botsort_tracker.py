@@ -3,6 +3,7 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 from utils.reid import SimpleReID
 from scipy.spatial.distance import cdist
+from utils.reid import ReIDFactory
 
 def iou(bb_test, bb_gt):
     xx1 = np.maximum(bb_test[0], bb_gt[0])
@@ -25,13 +26,13 @@ class Track:
         self.time_since_update = 0
 
 class BoTSORTTracker:
-    def __init__(self, iou_threshold=0.3, max_age=30, min_confidence=0.3, device='cpu'):
+    def __init__(self, iou_threshold=0.3, max_age=30, min_confidence=0.3, device='cpu', reid_type='cnn', reid_model='osnet_x1_0'):
         self.iou_threshold = iou_threshold
         self.max_age = max_age
         self.min_confidence = min_confidence
         self.tracks = []
         self.next_id = 1
-        self.reid = SimpleReID(device=device)
+        self.reid = ReIDFactory(reid_type=reid_type, model_name=reid_model, device=device)
 
     def update(self, detections, image: np.ndarray = None):
         """

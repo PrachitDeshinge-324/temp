@@ -14,3 +14,7 @@ visualization:
 logging:
   save_tracks: true
   tracks_file: tracks.csv
+reid:
+  type: transformer  # 'cnn' or 'transformer'
+  model: transreid_vit_small  # e.g., 'osnet_x1_0' for CNN, 'transreid_vit_small' for transformer
+  device: cuda  # 'cpu' or 'cuda'
