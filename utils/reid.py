@@ -4,6 +4,8 @@ import torchvision.transforms as T
 import torchvision.models as models
 import numpy as np
 import os
+import sys
+sys.path.append('./TransReID')
 
 class SimpleReID:
     def __init__(self, device='cpu'):

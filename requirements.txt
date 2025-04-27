@@ -19,5 +19,10 @@ matplotlib
 
 # For OSNet and other CNN-based ReID models
 torchreid
-# For transformer-based ReID (TransReID), user must install from official repo:
-git clone https://github.com/microsoft/TransReID.git && cd TransReID && pip install -r requirements.txt && pip install .
+# For transformer-based ReID (TransReID), install manually from the official repo:
+# See: https://github.com/microsoft/TransReID
+# Example:
+git clone https://github.com/damo-cv/TransReID.git
+cd TransReID
+pip install -r requirements.txt
+
