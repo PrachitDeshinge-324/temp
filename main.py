@@ -72,8 +72,11 @@ def main():
         out_writer = cv2.VideoWriter(vis_cfg.get('output_path', 'output.mp4'), fourcc, fps, (width, height))
 
     frame_id = 0
+    max_frames = 5000
     start_time = time.time()
     while True:
+        if frame_id >= max_frames:
+            break
         ret, frame = cap.read()
         if not ret:
             break
