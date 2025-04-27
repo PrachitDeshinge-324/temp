@@ -1,0 +1,109 @@
+import cv2
+import yaml
+import torch
+import numpy as np
+import sys
+import csv
+import time
+from detectors.yolov8_detector import YOLOv8Detector
+from detectors.efficientdet_detector import EfficientDetDetector
+from trackers.bytetrack_tracker import ByteTrackTracker
+from trackers.botsort_tracker import BoTSORTTracker
+from utils.visualization import draw_tracks
+
+# Utility: Load config
+def load_config(config_path):
+    with open(config_path, 'r') as f:
+        return yaml.safe_load(f)
+
+def main():
+    # Load config
+    config = load_config('config.yaml')
+    video_source = config['video_source']
+    detector_cfg = config['detector']
+    tracker_cfg = config['tracker']
+    vis_cfg = config['visualization']
+
+    # Select device
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    # Initialize detector
+    if 'yolov8' in detector_cfg['model']:
+        detector = YOLOv8Detector(model_name=detector_cfg['model'], confidence_threshold=detector_cfg['confidence_threshold'], device=device)
+    elif 'efficientdet' in detector_cfg['model']:
+        detector = EfficientDetDetector(model_name=detector_cfg['model'], confidence_threshold=detector_cfg['confidence_threshold'], device=device)
+    else:
+        print(f"Unknown detector model: {detector_cfg['model']}")
+        sys.exit(1)
+
+    # Initialize tracker
+    if tracker_cfg['algorithm'] == 'bytetrack':
+        tracker = ByteTrackTracker(iou_threshold=tracker_cfg['iou_threshold'], max_age=tracker_cfg['max_age'], min_confidence=tracker_cfg['min_confidence'])
+    elif tracker_cfg['algorithm'] == 'botsort':
+        tracker = BoTSORTTracker(iou_threshold=tracker_cfg['iou_threshold'], max_age=tracker_cfg['max_age'], min_confidence=tracker_cfg['min_confidence'])
+    else:
+        print(f"Unknown tracker algorithm: {tracker_cfg['algorithm']}")
+        sys.exit(1)
+
+    # Prepare logging if enabled
+    log_cfg = config.get('logging', {})
+    save_tracks = log_cfg.get('save_tracks', False)
+    tracks_file = log_cfg.get('tracks_file', 'tracks.csv')
+    csv_writer = None
+    csv_file = None
+    if save_tracks:
+        csv_file = open(tracks_file, 'w', newline='')
+        csv_writer = csv.writer(csv_file)
+        csv_writer.writerow(['frame', 'track_id', 'x1', 'y1', 'x2', 'y2'])
+
+    # Open video source
+    cap = cv2.VideoCapture(video_source)
+    if not cap.isOpened():
+        print(f"Error: Unable to open video source {video_source}")
+        sys.exit(1)
+
+    frame_id = 0
+    start_time = time.time()
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        # Detect persons
+        try:
+            detections = detector.detect(frame)
+        except Exception as e:
+            print(f"Detection error: {e}")
+            break
+        # Track persons
+        try:
+            tracks = tracker.update(detections, frame)
+        except Exception as e:
+            print(f"Tracking error: {e}")
+            break
+        # Draw boxes and track IDs on frame
+        frame = draw_tracks(frame, tracks)
+        # Log tracks if enabled
+        if save_tracks and csv_writer:
+            for track in tracks:
+                x1, y1, x2, y2, track_id, conf = track
+                csv_writer.writerow([frame_id, int(track_id), int(x1), int(y1), int(x2), int(y2)])
+        # FPS calculation
+        elapsed = time.time() - start_time
+        fps = (frame_id + 1) / elapsed if elapsed > 0 else 0
+        cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+        if vis_cfg['display']:
+            cv2.imshow('Person Detection & Tracking', frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        frame_id += 1
+
+    print(f"Average FPS: {fps:.2f}")
+
+    if save_tracks and csv_file:
+        csv_file.close()
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+if __name__ == '__main__':
+    main()

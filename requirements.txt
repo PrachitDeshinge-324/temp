@@ -1,0 +1,18 @@
+# Core deep learning and computer vision
+torch
+opencv-python
+numpy
+pyyaml
+
+# YOLOv8 (Ultralytics)
+ultralytics
+
+# EfficientDet (using efficientdet-pytorch)
+# efficientdet-pytorch
+
+# ByteTrack and BoT-SORT dependencies (use open-source implementations)
+scipy
+filterpy
+
+# For visualization (optional)
+matplotlib

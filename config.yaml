@@ -1,0 +1,16 @@
+video_source: ../Person/Videos/1.mp4  # 0 for webcam, or path/URL for video file/stream
+detector:
+  model: yolov8m  # yolov8n, yolov8s, yolov8m, efficientdet-d0, efficientdet-d1
+  confidence_threshold: 0.3
+tracker:
+  algorithm: bytetrack  # bytetrack or botsort
+  iou_threshold: 0.3
+  max_age: 30
+  min_confidence: 0.3
+visualization:
+  display: true
+  save_output: false
+  output_path: output.mp4
+logging:
+  save_tracks: true
+  tracks_file: tracks.csv
