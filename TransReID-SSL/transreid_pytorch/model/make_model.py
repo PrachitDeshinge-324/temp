@@ -64,7 +64,7 @@ class Backbone(nn.Module):
     def __init__(self, num_classes, cfg):
         super(Backbone, self).__init__()
         last_stride = cfg.MODEL.LAST_STRIDE
-        model_path = cfg.MODEL.PRETRAIN_PATH
+        model_path = cfg.TEST.WEIGHT
         model_name = cfg.MODEL.NAME
         pretrain_choice = cfg.MODEL.PRETRAIN_CHOICE
         self.cos_layer = cfg.MODEL.COS_LAYER
@@ -166,7 +166,7 @@ class build_transformer(nn.Module):
     def __init__(self, num_classes, camera_num, view_num, cfg, factory):
         super(build_transformer, self).__init__()
         last_stride = cfg.MODEL.LAST_STRIDE
-        model_path = cfg.MODEL.PRETRAIN_PATH
+        model_path = cfg.TEST.WEIGHT
         model_name = cfg.MODEL.NAME
         pretrain_choice = cfg.MODEL.PRETRAIN_CHOICE
         self.cos_layer = cfg.MODEL.COS_LAYER
@@ -263,7 +263,7 @@ class build_transformer(nn.Module):
 class build_transformer_local(nn.Module):
     def __init__(self, num_classes, camera_num, view_num, cfg, factory, rearrange):
         super(build_transformer_local, self).__init__()
-        model_path = cfg.MODEL.PRETRAIN_PATH
+        model_path = cfg.TEST.WEIGHT
         pretrain_choice = cfg.MODEL.PRETRAIN_CHOICE
         self.cos_layer = cfg.MODEL.COS_LAYER
         self.neck = cfg.MODEL.NECK
