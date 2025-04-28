@@ -71,6 +71,9 @@ class Track:
 
     def get_state(self):
         x, y, s, r = self.kf.x[:4].reshape(-1)
+        # Clamp s and r to be positive and nonzero
+        s = max(s, 1e-2)
+        r = max(r, 1e-2)
         w = np.sqrt(s * r)
         h = s / (w + 1e-6)
         x1 = x - w / 2.
@@ -115,6 +118,8 @@ class BoTSORTTracker:
         # Association: combine IoU, appearance, and motion (center distance)
         assigned_tracks = set()
         assigned_dets = set()
+        unmatched_tracks = set(range(len(self.tracks)))
+        unmatched_dets = set(range(len(detections)))
         if len(track_states) > 0 and len(dets) > 0:
             iou_matrix = np.zeros((len(track_states), len(dets)), dtype=np.float32)
             for t, tb in enumerate(track_states):
@@ -127,10 +132,8 @@ class BoTSORTTracker:
                 for d, db in enumerate(dets):
                     dx, dy = (db[0]+db[2])/2, (db[1]+db[3])/2
                     motion_matrix[t, d] = np.linalg.norm([tx-dx, ty-dy])
-            # Normalize motion_matrix
             if motion_matrix.max() > 0:
                 motion_matrix = motion_matrix / (motion_matrix.max() + 1e-6)
-            # Combine: lower is better
             cost_matrix = 0.4 * (1 - iou_matrix) + 0.4 * emb_matrix + 0.2 * motion_matrix
             row_ind, col_ind = linear_sum_assignment(cost_matrix)
             for t, d in zip(row_ind, col_ind):
@@ -138,15 +141,29 @@ class BoTSORTTracker:
                     self.tracks[t].update(dets[d], det_embs[d], det_confs[d])
                     assigned_tracks.add(t)
                     assigned_dets.add(d)
-            # Unmatched tracks
+            unmatched_tracks -= assigned_tracks
+            unmatched_dets -= assigned_dets
+            # SECOND STAGE: Try to match remaining detections to unmatched tracks using only embedding
+            if len(unmatched_tracks) > 0 and len(unmatched_dets) > 0:
+                emb_matrix2 = cdist(track_embs[list(unmatched_tracks)], [det_embs[d] for d in unmatched_dets], metric='cosine')
+                row2, col2 = linear_sum_assignment(emb_matrix2)
+                for idx, (t_idx, d_idx) in enumerate(zip(row2, col2)):
+                    t = list(unmatched_tracks)[t_idx]
+                    d = list(unmatched_dets)[d_idx]
+                    if emb_matrix2[t_idx, d_idx] < 0.6:  # looser threshold for reid-only match
+                        self.tracks[t].update(dets[d], det_embs[d], det_confs[d])
+                        assigned_tracks.add(t)
+                        assigned_dets.add(d)
+                unmatched_tracks -= assigned_tracks
+                unmatched_dets -= assigned_dets
+            # Unmatched tracks: do not update embedding, just increment time_since_update
             for i, track in enumerate(self.tracks):
                 if i not in assigned_tracks:
                     track.time_since_update += 1
-            # New tracks
-            for d, det in enumerate(detections):
-                if d not in assigned_dets:
-                    self.tracks.append(Track(det[:4], self.next_id, det[4], det_embs[d]))
-                    self.next_id += 1
+            # New tracks for unmatched detections
+            for d in unmatched_dets:
+                self.tracks.append(Track(dets[d], self.next_id, det_confs[d], det_embs[d]))
+                self.next_id += 1
         else:
             # No tracks or no detections: all detections are new tracks
             for idx, det in enumerate(detections):
