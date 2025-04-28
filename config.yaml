@@ -15,7 +15,6 @@ logging:
   save_tracks: true
   tracks_file: tracks.csv
 reid:
-  type: transformer
-  model: vit_small_ics  # (or the model name you want, matching the config .yml)
+  type: cnn
+  model: osnet_ain_x1_0  # or mgn, pcb_p6, abd_resnet50
   device: cuda
-  checkpoint: /content/drive/MyDrive/vit_base_ics_cfs_lup.pth
