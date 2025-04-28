@@ -65,14 +65,15 @@ class ReIDFactory:
         return model, transform
 
     def _load_transformer_model(self, model_name, checkpoint):
-        # Use TransReID-SSL local code
         from config import cfg
         from model import make_model
         from torchvision import transforms
         import cv2
         # Set up config for inference
-        cfg.merge_from_file(os.path.join(os.path.dirname(__file__), '../TransReID-SSL/transreid_pytorch/configs/market/vit_small_ics.yml'))
-        cfg.TEST.WEIGHT = checkpoint
+        config_file = os.path.join(os.path.dirname(__file__), '../TransReID-SSL/transreid_pytorch/configs/market/vit_small_ics.yml')
+        cfg.merge_from_file(config_file)
+        print(f"[ReID] Using checkpoint: {checkpoint}")
+        cfg.TEST.WEIGHT = checkpoint  # Force use of config path
         cfg.MODEL.DEVICE_ID = '0'
         cfg.freeze()
         # Build model
