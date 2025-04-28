@@ -26,13 +26,13 @@ class Track:
         self.time_since_update = 0
 
 class BoTSORTTracker:
-    def __init__(self, iou_threshold=0.3, max_age=30, min_confidence=0.3, device='cpu', reid_type='cnn', reid_model='osnet_x1_0'):
+    def __init__(self, iou_threshold=0.3, max_age=30, min_confidence=0.3, device='cpu', reid_type='cnn', reid_model='osnet_x1_0', checkpoint=None):
         self.iou_threshold = iou_threshold
         self.max_age = max_age
         self.min_confidence = min_confidence
         self.tracks = []
         self.next_id = 1
-        self.reid = ReIDFactory(reid_type=reid_type, model_name=reid_model, device=device)
+        self.reid = ReIDFactory(reid_type=reid_type, model_name=reid_model, device=device, checkpoint=checkpoint)
 
     def update(self, detections, image: np.ndarray = None):
         """
