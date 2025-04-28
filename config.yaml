@@ -18,4 +18,4 @@ reid:
   type: transformer
   model: vit_small_ics  # (or the model name you want, matching the config .yml)
   device: cuda
-  checkpoint: /content/drive/MyDrive/vit_base_ics_cfs_lup.pth  # set this to your downloaded TransReID checkpoint
+  checkpoint: /content/drive/MyDrive/vit_base_ics_cfs_lup.pth
