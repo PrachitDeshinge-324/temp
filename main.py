@@ -84,13 +84,17 @@ def main():
         out_writer = cv2.VideoWriter(vis_cfg.get('output_path', 'output.mp4'), fourcc, fps, (width, height))
 
     frame_id = 0
-    max_frames = 5000
+    max_frames = 15800
+    start_frame = 14600
     start_time = time.time()
     while True:
-        if frame_id >= max_frames:
-            break
         ret, frame = cap.read()
         if not ret:
+            break
+        frame_id += 1
+        if frame_id < start_frame:
+            continue
+        if frame_id > max_frames:
             break
         # Detect persons
         try:
@@ -122,7 +126,6 @@ def main():
             cv2.imshow('Person Detection & Tracking', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-        frame_id += 1
 
     print(f"Average FPS: {fps:.2f}")
 
@@ -131,6 +134,7 @@ def main():
 
     if out_writer:
         out_writer.release()
+        print(f"Output video saved to {vis_cfg.get('output_path', 'output.mp4')}")
 
     cap.release()
     cv2.destroyAllWindows()

@@ -7,6 +7,7 @@ import torch.nn as nn
 import torchvision.transforms as T
 import torchvision.models as models
 import numpy as np
+from PIL import Image
 
 class SimpleReID:
     def __init__(self, device='cpu'):
@@ -57,17 +58,19 @@ class ReIDFactory:
         model = torchreid.models.build_model(
             name=model_name, num_classes=1000, pretrained=True
         )
-        # Use torchreid's best practice for test transforms
-        transform = torchreid.data.transforms.build_transform(
-            resize_h=256, resize_w=128, is_train=False
+        # Use only the test transform for inference
+        _, test_transform = torchreid.data.transforms.build_transforms(
+            256, 128, is_train=False
         )
-        return model, transform
+        return model, test_transform
 
     def extract(self, image, bbox):
         x1, y1, x2, y2 = map(int, bbox)
         crop = image[max(y1,0):max(y2,0), max(x1,0):max(x2,0)]
         if crop.size == 0 or crop.shape[0] == 0 or crop.shape[1] == 0:
             return np.zeros(512)
+        # Convert to PIL Image for torchreid transforms
+        crop = Image.fromarray(crop[..., ::-1])  # Convert BGR (OpenCV) to RGB (PIL)
         inp = self.transform(crop).unsqueeze(0).to(self.device)
         with torch.no_grad():
             feat = self.model(inp).cpu().numpy().flatten()

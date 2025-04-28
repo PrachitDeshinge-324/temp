@@ -5,7 +5,7 @@ detector:
 tracker:
   algorithm: botsort  # bytetrack or botsort
   iou_threshold: 0.3
-  max_age: 30
+  max_age: 90
   min_confidence: 0.3
 visualization:
   display: false
