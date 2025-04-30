@@ -15,7 +15,7 @@ logging:
   save_tracks: true
   tracks_file: tracks.csv
 reid:
-  type: transformer
-  model: TransReID  # or mgn, pcb_p6, abd_resnet50
+  type: swin
+  model: swin_base_patch4_window7_224
   device: cuda
-  checkpoint: /path/to/your/transreid_weights.pth
+  checkpoint: swin_base.pth

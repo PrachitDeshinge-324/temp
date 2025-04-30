@@ -72,6 +72,73 @@ class TransReIDExtractor:
         feat = feat / (np.linalg.norm(feat) + 1e-6)
         return feat
 
+class SoliderReIDExtractor:
+    def __init__(self, model_path, device='cpu'):
+        from utils.solider.models.build import build_solider
+        import yaml
+        self.device = device
+        # Assume config.yaml is in the same directory as model_path
+        config_dir = os.path.dirname(model_path)
+        config_file = os.path.join(config_dir, 'config.yaml')
+        with open(config_file, 'r') as f:
+            cfg = yaml.safe_load(f)
+        self.model = build_solider(cfg, num_classes=1)
+        self.model.load_state_dict(torch.load(model_path, map_location=device), strict=False)
+        self.model = self.model.to(device)
+        self.model.eval()
+        import torchvision.transforms as T
+        self.transform = T.Compose([
+            T.ToPILImage(),
+            T.Resize((cfg.get('height', 256), cfg.get('width', 128))),
+            T.ToTensor(),
+            T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+
+    def extract(self, image, bbox):
+        x1, y1, x2, y2 = map(int, bbox)
+        crop = image[max(y1,0):max(y2,0), max(x1,0):max(x2,0)]
+        if crop.size == 0 or crop.shape[0] == 0 or crop.shape[1] == 0:
+            return np.zeros(768)  # SOLIDER default embedding size
+        inp = self.transform(crop).unsqueeze(0).to(self.device)
+        with torch.no_grad():
+            feat = self.model(inp)
+            if isinstance(feat, (tuple, list)):
+                feat = feat[0]
+            feat = feat.cpu().numpy().flatten()
+        feat = feat / (np.linalg.norm(feat) + 1e-6)
+        return feat
+
+class SwinReIDExtractor:
+    def __init__(self, model_path, device='cpu'):
+        import torch
+        from swin_transformer import swin_base_patch4_window7_224
+        self.device = device
+        self.model = swin_base_patch4_window7_224(img_size=224)
+        state_dict = torch.load(model_path, map_location=device)
+        self.model.load_state_dict(state_dict, strict=False)
+        self.model = self.model.to(device)
+        self.model.eval()
+        import torchvision.transforms as T
+        self.transform = T.Compose([
+            T.ToPILImage(),
+            T.Resize((224, 224)),
+            T.ToTensor(),
+            T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+
+    def extract(self, image, bbox):
+        import numpy as np
+        x1, y1, x2, y2 = map(int, bbox)
+        crop = image[max(y1,0):max(y2,0), max(x1,0):max(x2,0)]
+        if crop.size == 0 or crop.shape[0] == 0 or crop.shape[1] == 0:
+            return np.zeros(768)
+        inp = self.transform(crop).unsqueeze(0).to(self.device)
+        with torch.no_grad():
+            feat, _ = self.model(inp)
+            feat = feat.cpu().numpy().flatten()
+        feat = feat / (np.linalg.norm(feat) + 1e-6)
+        return feat
+
 class ReIDFactory:
     def __init__(self, reid_type='cnn', model_name='osnet_ibn_x1_0', device='cpu', checkpoint=None):
         self.reid_type = reid_type
@@ -83,10 +150,15 @@ class ReIDFactory:
         elif reid_type == 'transformer':
             if checkpoint is None:
                 raise ValueError('Transformer ReID requires a checkpoint path.')
-            self.model = TransReIDExtractor(checkpoint, device)
+            self.model = SoliderReIDExtractor(checkpoint, device)
+            self.extract_fn = self._extract_transformer
+        elif reid_type == 'swin':
+            if checkpoint is None:
+                raise ValueError('Swin ReID requires a checkpoint path.')
+            self.model = SwinReIDExtractor(checkpoint, device)
             self.extract_fn = self._extract_transformer
         else:
-            raise ValueError(f"Unknown reid_type: {reid_type}. Only 'cnn' and 'transformer' are supported.")
+            raise ValueError(f"Unknown reid_type: {reid_type}. Only 'cnn', 'transformer', and 'swin' are supported.")
         if reid_type == 'cnn':
             self.model = self.model.to(device)
             self.model.eval()

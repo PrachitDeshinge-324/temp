@@ -1,0 +1,16 @@
+# Ignore model weights and checkpoints
+*.pth
+*.pt
+*.ckpt
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Ignore tracks and output videos
+tracks.csv
+*.mp4
+
+# VSCode and OS files
+.vscode/
+.DS_Store
