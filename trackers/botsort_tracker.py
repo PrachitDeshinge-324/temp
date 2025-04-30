@@ -33,8 +33,6 @@ class Track:
         h = y2 - y1
         x = x1 + w / 2.
         y = y1 + h / 2.
-        s = w * h
-        r = w / float(h + 1e-6)
         kf = KalmanFilter(dim_x=7, dim_z=4)
         kf.F = np.eye(7)
         for i in range(4):
@@ -45,7 +43,8 @@ class Track:
         kf.P *= 10.
         kf.Q[-1,-1] *= 0.01
         kf.Q[4:,4:] *= 0.01
-        kf.x[:4] = np.array([x, y, s, r]).reshape((4,1))
+        # Use [x, y, w, h] instead of [x, y, s, r]
+        kf.x[:4] = np.array([x, y, w, h]).reshape((4,1))
         return kf
 
     def predict(self):
@@ -61,21 +60,19 @@ class Track:
         h = y2 - y1
         x = x1 + w / 2.
         y = y1 + h / 2.
-        s = w * h
-        r = w / float(h + 1e-6)
-        self.kf.update(np.array([x, y, s, r]))
+        self.kf.update(np.array([x, y, w, h]))
+        # Overwrite the state to match the detection exactly
+        self.kf.x[:4] = np.array([x, y, w, h]).reshape((4,1))
         self.bbox = bbox
         self.embedding = embedding
         self.conf = conf
         self.time_since_update = 0
 
     def get_state(self):
-        x, y, s, r = self.kf.x[:4].reshape(-1)
-        # Clamp s and r to be positive and nonzero
-        s = max(s, 1e-2)
-        r = max(r, 1e-2)
-        w = np.sqrt(s * r)
-        h = s / (w + 1e-6)
+        x, y, w, h = self.kf.x[:4].reshape(-1)
+        # Clamp w and h to be positive and reasonable
+        w = max(min(w, 2000), 5)
+        h = max(min(h, 2000), 5)
         x1 = x - w / 2.
         y1 = y - h / 2.
         x2 = x + w / 2.
