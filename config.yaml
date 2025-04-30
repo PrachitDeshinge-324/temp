@@ -5,16 +5,17 @@ detector:
 tracker:
   algorithm: botsort  # bytetrack or botsort
   iou_threshold: 0.3
-  max_age: 90
+  max_age: 250
   min_confidence: 0.3
 visualization:
   display: false
   save_output: true
-  output_path: /content/drive/MyDrive/output1.mp4
+  output_path: /content/drive/MyDrive/Trans_1.mp4
 logging:
   save_tracks: true
   tracks_file: tracks.csv
 reid:
-  type: cnn
-  model: osnet_ain_x1_0  # or mgn, pcb_p6, abd_resnet50
+  type: transformer
+  model: TransReID  # or mgn, pcb_p6, abd_resnet50
   device: cuda
+  checkpoint: /path/to/your/transreid_weights.pth
